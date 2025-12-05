@@ -107,6 +107,22 @@ python src/recommend.py --user_id 1 --top_n 20 --batch_size 20000
 python src/demo.py
 ```
 
+### 4. Recomendaciones Interactivas por Géneros
+
+```bash
+# Sistema interactivo que pregunta tus géneros favoritos
+python src/interactive.py
+```
+
+**Características**:
+- 🎬 Selecciona géneros por número o nombre
+- 🎯 Filtra películas que coincidan con tus preferencias
+- ⭐ Combina predicciones del modelo con coincidencia de géneros
+- 💬 Interfaz interactiva en consola
+- 🔄 Genera múltiples recomendaciones en una sesión
+
+**Ver guía completa**: [`docs/INTERACTIVE_GUIDE.md`](docs/INTERACTIVE_GUIDE.md)
+
 ## Estructura del Proyecto
 
 ```
@@ -117,11 +133,13 @@ movie_suggestor/
 │   ├── train.py             # Script de entrenamiento
 │   ├── recommend.py         # Generación de recomendaciones
 │   ├── demo.py              # Demo interactivo
-│   └── analyze.py           # Análisis de estadísticas
+│   ├── analyze.py           # Análisis de estadísticas
+│   └── interactive.py       # Recomendaciones interactivas por géneros
 │
 ├── docs/                    # Documentación
 │   ├── ARCHITECTURE.md      # Documentación técnica
 │   ├── QUICKSTART.md        # Guía de inicio rápido
+│   ├── INTERACTIVE_GUIDE.md # Guía del sistema interactivo
 │   ├── OPTIMIZACIONES.md    # Optimizaciones de rendimiento
 │   └── DATASET.md           # Instrucciones de descarga del dataset
 │
