@@ -24,6 +24,7 @@ class InteractiveRecommender:
         self.user_encoder = None
         self.movie_encoder = None
         self.movies_df = None
+        self.liked_ratings = None  # Ratings >= 4.0
         self.all_genres = []
         
     def load_system(self):
@@ -31,7 +32,7 @@ class InteractiveRecommender:
         print("=" * 80)
         print("🎬 SISTEMA INTERACTIVO DE RECOMENDACIÓN DE PELÍCULAS")
         print("=" * 80)
-        print("\n[1/4] Cargando configuración del modelo...")
+        print("\n[1/5] Cargando configuración del modelo...")
         
         try:
             config = np.load('model_config.npy')
@@ -45,7 +46,10 @@ class InteractiveRecommender:
             print("   python src/train.py --epochs 5 --sample_frac 0.01")
             return False
         
-        print("\n[2/4] Cargando codificadores...")
+            print("   python src/train.py --epochs 5 --sample_frac 0.01")
+            return False
+        
+        print("\n[2/5] Cargando codificadores...")
         try:
             with open('user_encoder.pkl', 'rb') as f:
                 self.user_encoder = pickle.load(f)
@@ -56,7 +60,10 @@ class InteractiveRecommender:
             print("   ❌ Error: No se encontraron los codificadores.")
             return False
         
-        print("\n[3/4] Cargando información de películas...")
+            print("   ❌ Error: No se encontraron los codificadores.")
+            return False
+        
+        print("\n[3/5] Cargando información de películas...")
         self.movies_df = load_movies("ml-32m")
         print(f"   ✓ {len(self.movies_df):,} películas cargadas")
         
@@ -66,7 +73,28 @@ class InteractiveRecommender:
             genres_set.update(genres_str.split('|'))
         self.all_genres = sorted([g for g in genres_set if g != '(no genres listed)'])
         
-        print("\n[4/4] Inicializando modelo...")
+        print("\n[4/5] Cargando historial de ratings (para buscar usuarios similares)...")
+        try:
+            # Cargar solo ratings altos (>= 4.0) para ahorrar memoria y enfocar en gustos positivos
+            ratings_path = os.path.join("ml-32m", "ratings.csv")
+            if os.path.exists(ratings_path):
+                print("   Leyendo ratings (esto puede tardar unos segundos)...")
+                chunks = []
+                # Usar chunksize para no saturar memoria
+                for chunk in pd.read_csv(ratings_path, usecols=['userId', 'movieId', 'rating'], chunksize=1000000):
+                    # Filtrar solo lo que nos interesa
+                    chunks.append(chunk[chunk['rating'] >= 4.0])
+                
+                self.liked_ratings = pd.concat(chunks, ignore_index=True)
+                print(f"   ✓ {len(self.liked_ratings):,} ratings positivos cargados")
+            else:
+                print("   ⚠️  No se encontró ratings.csv. Se usará modo básico.")
+                self.liked_ratings = None
+        except Exception as e:
+            print(f"   ⚠️  Error cargando ratings: {e}. Se usará modo básico.")
+            self.liked_ratings = None
+
+        print("\n[5/5] Inicializando modelo...")
         self.model = RecommenderNet(num_users, num_movies, embedding_size)
         dummy_input = np.array([[0, 0]], dtype=np.int32)
         _ = self.model(dummy_input)
@@ -146,7 +174,47 @@ class InteractiveRecommender:
         
         filtered_movies['genre_match_score'] = filtered_movies['genres'].apply(genre_score)
         
+        
         return filtered_movies
+    
+    def find_similar_users(self, selected_genres, top_k=50):
+        """Encuentra usuarios que hayan calificado alto películas de los géneros seleccionados."""
+        if self.liked_ratings is None:
+            return [0]  # Fallback al usuario 0
+        
+        # 1. Identificar películas de esos géneros
+        target_movies = self.filter_movies_by_genres(selected_genres, min_match=1)
+        target_movie_ids = target_movies['movieId'].values
+        
+        # 2. Filtrar ratings de esas películas
+        # Optimizacion: filtrar primero por movieIds
+        relevant_ratings = self.liked_ratings[self.liked_ratings['movieId'].isin(target_movie_ids)]
+        
+        if len(relevant_ratings) == 0:
+            return [0]
+
+        # 3. Contar qué usuarios tienen más ratings en este set
+        user_counts = relevant_ratings['userId'].value_counts()
+        
+        # 4. Obtener top K usuarios
+        top_user_ids = user_counts.head(top_k).index.tolist()
+        
+        # 5. Convertir a índices del modelo (asegurándose que existan)
+        valid_indices = []
+        for uid in top_user_ids:
+            try:
+                # El encoder podría lanzar error si el usuario no estaba en el set de entrenamiento
+                # (aunque es poco probable si usamos el mismo dataset)
+                idx = self.user_encoder.transform([uid])[0]
+                valid_indices.append(idx)
+            except ValueError:
+                continue
+                
+        if not valid_indices:
+            return [0]
+            
+        print(f"   ✓ Encontrados {len(valid_indices)} usuarios con gustos similares")
+        return valid_indices
     
     def get_recommendations_by_genres(self, genres, top_n=20, batch_size=10000):
         """Genera recomendaciones basadas en géneros preferidos."""
@@ -172,29 +240,29 @@ class InteractiveRecommender:
         
         print(f"   ✓ {len(valid_movie_ids):,} películas disponibles en el modelo")
         
-        # Crear un "usuario virtual" promedio
-        # Usamos el embedding promedio de todos los usuarios
-        print("\n🤖 Calculando preferencias basadas en usuarios similares...")
+        # Encontrar usuarios similares
+        print("\n👥 Buscando usuarios con gustos similares en los datos...")
+        similar_user_indices = self.find_similar_users(genres)
         
-        # Predecir ratings para las películas filtradas
+        print("\n🤖 Prediciendo preferencias personalizadas...")
+        
+        # Predecir ratings para las películas filtradas usando los usuarios similares
         movie_indices = self.movie_encoder.transform(valid_movie_ids)
         
-        # Usar el usuario promedio (índice 0 como proxy)
-        # En un sistema real, podríamos crear un perfil basado en las preferencias
-        user_idx = 0  # Usuario promedio
+        all_predictions = []
         
-        predictions = []
-        for i in range(0, len(movie_indices), batch_size):
-            end_idx = min(i + batch_size, len(movie_indices))
-            batch_movies = movie_indices[i:end_idx]
+        # Para cada usuario similar, predecimos ratings para TODAS las películas candidatas
+        # Luego promediaremos
+        for user_idx in similar_user_indices:
+            user_array = np.repeat(user_idx, len(movie_indices)).astype(np.int32)
+            inputs = np.stack([user_array, movie_indices], axis=1)
             
-            user_array = np.repeat(user_idx, len(batch_movies)).astype(np.int32)
-            inputs = np.stack([user_array, batch_movies], axis=1)
+            # Predecir en batches para no saturar memoria
+            user_preds = self.model.predict(inputs, batch_size=batch_size, verbose=0).flatten()
+            all_predictions.append(user_preds)
             
-            batch_preds = self.model.predict(inputs, verbose=0).flatten()
-            predictions.extend(batch_preds)
-        
-        predictions = np.array(predictions)
+        # Promediar predicciones de todos los usuarios similares
+        avg_predictions = np.mean(all_predictions, axis=0)
         
         # Combinar predicciones con score de géneros
         # Dar más peso a películas que coinciden con más géneros
@@ -203,8 +271,8 @@ class InteractiveRecommender:
         # Normalizar scores
         normalized_genre_scores = genre_scores / max(genre_scores)
         
-        # Score final: 70% predicción del modelo + 30% coincidencia de géneros
-        final_scores = 0.7 * predictions + 0.3 * normalized_genre_scores * 5.0
+        # Score final: 60% predicción promedio de usuarios similares + 40% coincidencia de géneros
+        final_scores = 0.6 * avg_predictions + 0.4 * normalized_genre_scores * 5.0
         
         # Obtener top N
         if top_n < len(final_scores):
