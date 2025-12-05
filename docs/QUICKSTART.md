@@ -28,9 +28,24 @@ python src/train.py --epochs 3 --sample_frac 0.01 --batch_size 512
 python src/train.py --epochs 10 --sample_frac 1.0 --batch_size 2048
 ```
 
+### Entrenamiento con Mixed Precision (GPU - 2-3x más rápido)
+```bash
+python src/train.py --epochs 10 --sample_frac 1.0 --batch_size 4096 --use_mixed_precision
+```
+
 ### Recomendaciones para un usuario específico
 ```bash
 python src/recommend.py --user_id 1 --top_n 15
+```
+
+### Recomendaciones optimizadas (con batch size)
+```bash
+python src/recommend.py --user_id 1 --top_n 20 --batch_size 20000
+```
+
+### Demo con procesamiento paralelo
+```bash
+python src/demo.py
 ```
 
 ### Ver usuarios disponibles
@@ -70,26 +85,31 @@ Archivos generados después del entrenamiento:
 
 ### Ejemplo 1: Entrenamiento Básico
 ```bash
-# Entrenar con 5% de datos, 5 épocas
-python train.py --epochs 5 --sample_frac 0.05
+# Entrenar con 1% de datos, 5 épocas
+python src/train.py --epochs 5 --sample_frac 0.01
 
 # Salida esperada:
-# Loaded 1,600,010 ratings.
+# Loaded 320,002 ratings.
 # Num users: 112,571, Num movies: 17,748
+# Training samples: 256,001, Test samples: 64,001
 # Epoch 1/5
 # ...
-# Final Validation MAE: 0.70
+# Epoch 5/5
+# Final Training MAE: 0.37
+# Final Validation MAE: 0.87
 ```
 
 ### Ejemplo 2: Recomendaciones
 ```bash
 # Obtener 10 recomendaciones para usuario 1
-python recommend.py --user_id 1 --top_n 10
+python src/recommend.py --user_id 1 --top_n 10
 
 # Salida esperada:
 # movieId                            title                      genres  predicted_rating
-#     110                Braveheart (1995)            Action|Drama|War          3.91
-#     593 Silence of the Lambs, The (1991)       Crime|Horror|Thriller          3.88
+#     318       Shawshank Redemption, The (1994)           Crime|Drama          3.718127
+#     593 Silence of the Lambs, The (1991)  Crime|Horror|Thriller          4.024154
+#     858                     Godfather, The (1972)           Crime|Drama          3.927450
+#   79132                       Inception (2010) Action|Crime|Drama|Mystery|Sci-Fi|Thriller|IMAX  3.802792
 #     ...
 ```
 
