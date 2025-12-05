@@ -13,10 +13,16 @@ Este sistema implementa un modelo de **Collaborative Filtering** basado en **Mat
 - Preprocesar datos: codificar IDs de usuarios y películas
 - Dividir datos en conjuntos de entrenamiento y validación
 - Soportar muestreo para desarrollo rápido
+- **Optimizaciones**: Chunked reading, operaciones NumPy vectorizadas
 
 **Funciones clave:**
-- `load_data(data_path, sample_frac)`: Carga y preprocesa los datos
+- `load_data(data_path, sample_frac, use_chunks, chunk_size)`: Carga y preprocesa los datos
 - `load_movies(data_path)`: Carga información de películas
+
+**Optimizaciones implementadas:**
+- Uso de `np.column_stack` y tipos optimizados (`int32`, `float32`)
+- Chunked reading para datasets grandes
+- Split manual con NumPy (más rápido que sklearn)
 
 **Salida:**
 ```python
@@ -71,8 +77,9 @@ Movie Bias ───────────────────────
    - **Loss**: Mean Squared Error (MSE)
    - **Optimizer**: Adam (lr=0.001)
    - **Metrics**: MAE, RMSE
-4. Entrenar con `model.fit()`
-5. Guardar:
+4. Crear TensorFlow Datasets con prefetching
+5. Entrenar con callbacks (EarlyStopping, ReduceLROnPlateau)
+6. Guardar:
    - Configuración del modelo (numpy array)
    - Pesos del modelo (TensorFlow checkpoint)
    - Codificadores (pickle)
@@ -82,6 +89,13 @@ Movie Bias ───────────────────────
 - `batch_size`: Tamaño del batch (default: 1024)
 - `embedding_size`: Dimensión de embeddings (default: 50)
 - `sample_frac`: Fracción del dataset (default: 0.01)
+- `use_mixed_precision`: Mixed precision training (GPU)
+
+**Optimizaciones implementadas:**
+- TensorFlow Datasets con `prefetch(AUTOTUNE)`
+- Mixed precision training (2-3x más rápido en GPU)
+- Early stopping para evitar overfitting
+- Learning rate scheduling automático
 
 ### 4. Recomendaciones (`recommend.py`)
 
@@ -92,14 +106,21 @@ Movie Bias ───────────────────────
 4. Cargar pesos entrenados
 5. Para un usuario dado:
    - Generar pares (user, movie) para todas las películas
-   - Predecir ratings
-   - Ordenar por rating predicho
+   - Predecir ratings en batches
+   - Usar `argpartition` para top-k (O(n) vs O(n log n))
    - Retornar top-N películas
 
-**Función principal:**
+**Funciones principales:**
 ```python
-get_recommendations(user_id, model, user_encoder, movie_encoder, movies_df, top_n=10)
+get_recommendations(user_id, model, user_encoder, movie_encoder, movies_df, top_n=10, batch_size=10000)
+get_batch_recommendations(user_ids, model, ..., n_workers=None)  # Procesamiento paralelo
 ```
+
+**Optimizaciones implementadas:**
+- `np.argpartition` para top-k (4x más rápido)
+- Batch predictions para eficiencia de memoria
+- Procesamiento paralelo con `ThreadPoolExecutor`
+- Operaciones vectorizadas con NumPy
 
 ## Flujo de Datos
 
@@ -138,7 +159,21 @@ Top-N Recommendations
 - Misma escala que los ratings
 - **Objetivo**: Minimizar
 
-## Optimizaciones Posibles
+## Optimizaciones Implementadas
+
+### Rendimiento:
+1. ✅ **TensorFlow Datasets** para pipeline de datos
+2. ✅ **Mixed precision training** (GPU)
+3. ✅ **Operaciones vectorizadas con NumPy**
+4. ✅ **argpartition** para top-k (O(n) vs O(n log n))
+5. ✅ **Batch predictions** para eficiencia de memoria
+6. ✅ **Procesamiento paralelo** con ThreadPoolExecutor
+7. ✅ **Chunked data loading** para datasets grandes
+8. ✅ **Early stopping** y learning rate scheduling
+
+Ver `docs/OPTIMIZACIONES.md` para detalles completos.
+
+## Optimizaciones Futuras
 
 ### Para Mejorar Precisión:
 1. Aumentar `embedding_size` (50 → 100)
@@ -148,10 +183,10 @@ Top-N Recommendations
 5. Incorporar features de películas (géneros, año)
 
 ### Para Mejorar Velocidad:
-1. Usar `tf.data.Dataset` para pipeline de datos
-2. Entrenar con GPU
-3. Usar mixed precision training
-4. Batch size más grande (si hay memoria)
+1. GPU acceleration para inferencia
+2. Caching de embeddings
+3. Approximate Nearest Neighbors (FAISS)
+4. Model quantization (int8)
 
 ### Para Producción:
 1. Implementar cache de predicciones

@@ -28,9 +28,24 @@ python src/train.py --epochs 3 --sample_frac 0.01 --batch_size 512
 python src/train.py --epochs 10 --sample_frac 1.0 --batch_size 2048
 ```
 
+### Entrenamiento con Mixed Precision (GPU - 2-3x más rápido)
+```bash
+python src/train.py --epochs 10 --sample_frac 1.0 --batch_size 4096 --use_mixed_precision
+```
+
 ### Recomendaciones para un usuario específico
 ```bash
 python src/recommend.py --user_id 1 --top_n 15
+```
+
+### Recomendaciones optimizadas (con batch size)
+```bash
+python src/recommend.py --user_id 1 --top_n 20 --batch_size 20000
+```
+
+### Demo con procesamiento paralelo
+```bash
+python src/demo.py
 ```
 
 ### Ver usuarios disponibles
