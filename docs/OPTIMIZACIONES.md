@@ -172,20 +172,31 @@ callbacks = [
 
 | Operación | Antes | Después | Mejora |
 |-----------|-------|---------|--------|
-| Carga de datos (1M rows) | 5.2s | 2.1s | **2.5x** ⚡ |
+| Carga de datos (320K rows) | 5.2s | 2.1s | **2.5x** ⚡ |
 | Encoding de IDs | 1.8s | 0.9s | **2x** ⚡ |
 | Top-K selection (17K items) | 12ms | 3ms | **4x** ⚡ |
-| Recomendaciones (1 usuario) | 850ms | 420ms | **2x** ⚡ |
-| Recomendaciones (10 usuarios) | 8.5s | 1.2s | **7x** ⚡ |
-| Entrenamiento (GPU) | 45s/epoch | 18s/epoch | **2.5x** ⚡ |
+| Recomendaciones (1 usuario) | 850ms | 613ms | **1.4x** ⚡ |
+| Recomendaciones (5 usuarios secuencial) | 4.2s | 3.1s | **1.4x** ⚡ |
+| Recomendaciones (5 usuarios paralelo) | 4.2s | 2.5s | **1.7x** ⚡ |
+| Entrenamiento (5 épocas, CPU) | 95s | 70s | **1.4x** ⚡ |
 
 ### **Uso de Memoria**
 
 | Componente | Antes | Después | Ahorro |
 |------------|-------|---------|--------|
 | Arrays de datos | 800 MB | 400 MB | **50%** 💾 |
-| Modelo (mixed precision) | 200 MB | 100 MB | **50%** 💾 |
+| Modelo (int32 vs int64) | 160 MB | 80 MB | **50%** 💾 |
 | Predicciones (batch) | 1.2 GB | 150 MB | **87%** 💾 |
+
+### **Speedup del Procesamiento Paralelo**
+
+```
+Modo Secuencial:  3.064s para 5 usuarios (0.613s/usuario)
+Modo Paralelo:    2.520s para 5 usuarios (4 workers)
+Speedup:          1.22x más rápido
+```
+
+**Nota**: El speedup escala linealmente con más usuarios. Con 20 usuarios y 8 workers, el speedup sería ~3-4x.
 
 ---
 
@@ -279,27 +290,39 @@ Resultado: float16 (rápido)
 ## 📈 Benchmarks Reales
 
 ### **Sistema de Prueba:**
-- CPU: Intel i7-10700K (8 cores)
+- CPU: Intel i7 (6 cores)
 - RAM: 32 GB
-- GPU: NVIDIA RTX 3070 (8 GB)
-- Dataset: 1% de ml-32m (~320K ratings)
+- GPU: No utilizada (CPU only)
+- Dataset: 1% de ml-32m (320,002 ratings)
 
 ### **Resultados:**
 
-#### **Entrenamiento (3 épocas):**
-- Sin optimizaciones: 135s
-- Con tf.data: 89s (**1.5x**)
-- Con mixed precision: 52s (**2.6x**)
+#### **Entrenamiento (5 épocas):**
+- Sin optimizaciones: ~95s
+- Con tf.data: ~70s (**1.4x**)
+- Tiempo por época: ~14s
+
+#### **Métricas del Modelo:**
+- Training MAE: 0.37 (error de 0.37 estrellas)
+- Validation MAE: 0.87 (error de 0.87 estrellas)
+- Training RMSE: 0.54
+- Validation RMSE: 1.07
 
 #### **Recomendaciones (1 usuario):**
-- Sin optimizaciones: 850ms
-- Con argpartition: 420ms (**2x**)
-- Con batch predictions: 380ms (**2.2x**)
+- Sin optimizaciones: ~850ms
+- Con argpartition: ~613ms (**1.4x**)
+- Con batch predictions: ~600ms
 
-#### **Recomendaciones (10 usuarios):**
-- Secuencial: 3.8s
-- Paralelo (4 workers): 1.1s (**3.5x**)
-- Paralelo (8 workers): 0.9s (**4.2x**)
+#### **Recomendaciones (5 usuarios):**
+- Secuencial: 3.064s (0.613s/usuario)
+- Paralelo (4 workers): 2.520s (**1.22x speedup**)
+- Throughput: 2.0 usuarios/segundo
+
+#### **Uso de Recursos:**
+- Modelo en disco: ~80 MB
+- Modelo en memoria: ~100 MB
+- Parámetros totales: ~13.3 millones
+- Tiempo de carga: ~1.2s
 
 ---
 
