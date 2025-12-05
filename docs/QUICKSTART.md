@@ -113,7 +113,37 @@ python src/recommend.py --user_id 1 --top_n 10
 #     ...
 ```
 
-### Ejemplo 3: Demo Completo
+### Ejemplo 3: Recomendaciones Interactivas por Géneros
+```bash
+python src/interactive.py
+
+# El sistema te mostrará los géneros disponibles:
+# 1. Action    2. Adventure   3. Animation
+# 4. Children  5. Comedy      6. Crime
+# ...
+
+# Puedes seleccionar por números:
+Tu respuesta: 1,16,17  # Action, Sci-Fi, Thriller
+
+# O por nombres:
+Tu respuesta: Action,Sci-Fi,Thriller
+
+# Luego elige cuántas recomendaciones:
+¿Cuántas recomendaciones quieres? (default: 10): 15
+
+# Obtendrás películas como:
+# 1. Children of Men (2006)
+#    Géneros: Action|Adventure|Drama|Sci-Fi|Thriller
+#    Rating predicho: 4.10 ⭐⭐⭐⭐
+#    Coincidencia de géneros: 🎯🎯🎯 (3)
+#
+# 2. Matrix, The (1999)
+#    Géneros: Action|Sci-Fi|Thriller
+#    Rating predicho: 3.96 ⭐⭐⭐⭐
+#    Coincidencia de géneros: 🎯🎯🎯 (3)
+```
+
+### Ejemplo 4: Demo Completo
 ```bash
 python demo.py
 

@@ -10,6 +10,7 @@ Este directorio contiene todo el código fuente del sistema de recomendaciones c
 - **`recommend.py`** - Generación de recomendaciones (vectorizado y paralelo)
 - **`demo.py`** - Demo interactivo con benchmarking
 - **`analyze.py`** - Análisis de estadísticas del dataset
+- **`interactive.py`** - Sistema interactivo de recomendaciones por géneros
 
 ## Optimizaciones Implementadas
 
@@ -39,6 +40,9 @@ python src/recommend.py --user_id 1 --top_n 20 --batch_size 20000
 
 # Ver demo con procesamiento paralelo
 python src/demo.py
+
+# Sistema interactivo por géneros
+python src/interactive.py
 
 # Analizar dataset
 python src/analyze.py

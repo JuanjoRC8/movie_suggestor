@@ -6,6 +6,7 @@ Este directorio contiene toda la documentación del proyecto.
 
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** - Documentación técnica detallada de la arquitectura
 - **[QUICKSTART.md](QUICKSTART.md)** - Guía de inicio rápido
+- **[INTERACTIVE_GUIDE.md](INTERACTIVE_GUIDE.md)** - Guía del sistema interactivo de recomendaciones
 - **[OPTIMIZACIONES.md](OPTIMIZACIONES.md)** - Optimizaciones de rendimiento implementadas
 - **[DATASET.md](DATASET.md)** - Instrucciones para descargar el dataset
 
